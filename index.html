@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Violet — Descargas</title>
+  <meta name="description" content="Violet: archivos para descargar gratis, sin registros ni publicidad.">
+  <meta name="theme-color" content="#000000">
+  <meta name="referrer" content="no-referrer">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="top">
+    <a class="logo" href="./" aria-label="Violet, inicio">
+      <svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M4 6h7l5 14 5-14h7L19 27h-6z" fill="currentColor"/>
+      </svg>
+      <span>Violet</span>
+    </a>
+  </header>
+
+  <main class="wrap">
+    <section class="intro">
+      <h1>Descargas</h1>
+      <p id="count" class="muted">Cargando archivos…</p>
+    </section>
+
+    <section id="list" class="grid" aria-live="polite"></section>
+
+    <p id="status" class="status" hidden></p>
+  </main>
+
+  <footer class="foot">
+    <span>Violet</span> · Descargas directas, sin registro.
+  </footer>
+
+  <template id="card-tpl">
+    <article class="card" tabindex="0">
+      <div class="card-head">
+        <span class="ext"></span>
+        <h2 class="name"></h2>
+      </div>
+      <p class="desc"></p>
+      <p class="meta"></p>
+      <a class="btn" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Descargar
+      </a>
+    </article>
+  </template>
+
+  <script src="assets/app.js" defer></script>
+</body>
+</html>

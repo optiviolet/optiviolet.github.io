@@ -1,0 +1,49 @@
+# Publica Violet en GitHub Pages cada vez que cambias algo en la rama main
+# (subir/borrar un archivo en files/, editar catalogo.json, etc.).
+name: Publicar Violet
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # historial completo para conocer la fecha de cada archivo
+
+      - name: Generar lista de archivos
+        run: node scripts/generar-catalogo.mjs
+
+      - name: Preparar sitio
+        run: |
+          mkdir -p _site
+          cp -r index.html 404.html assets archivos.json _site/
+          if [ -d files ]; then cp -r files _site/; rm -f _site/files/LEEME.md _site/files/.gitkeep; fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

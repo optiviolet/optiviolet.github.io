@@ -1,0 +1,4 @@
+¡Hola! Este es un archivo de ejemplo de Violet.
+
+Si lo has descargado, el sistema de descargas funciona correctamente.
+Puedes borrarlo desde GitHub cuando subas tus propios archivos.
