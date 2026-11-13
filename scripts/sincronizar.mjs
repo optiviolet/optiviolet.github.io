@@ -105,7 +105,10 @@ for (const s of secciones) {
 }
 
 // 3) Archivos grandes -> GitHub Releases
-const repo = run("gh", ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]);
+// El nombre del repositorio sale del remoto de git (no necesita GitHub CLI).
+const remoto = run("git", ["remote", "get-url", "origin"]);
+const repo = (/github\.com[/:]([^/]+\/[^/]+?)(\.git)?$/.exec(remoto) || [])[1];
+if (!repo) throw new Error(`El remoto de git no es un repositorio de GitHub: ${remoto}`);
 const releasesPath = join(root, "releases.json");
 const anteriores = existsSync(releasesPath) ? JSON.parse(readFileSync(releasesPath, "utf8")) : [];
 const nuevos = [];
@@ -117,28 +120,42 @@ for (const f of grandes) {
   usados.set(base, (usados.get(base) || 0) + 1);
 }
 
-if (grandes.length || anteriores.length) {
-  if (!tryRun("gh", ["release", "view", TAG])) {
-    run("gh", ["release", "create", TAG, "--title", "Archivos grandes de Violet",
+const nombreAssetDe = (f) => {
+  const base = limpiar(basename(f.rel)) || "archivo";
+  return usados.get(base) > 1 ? `${limpiar(f.rel.split("/")[0])}--${base}` : base;
+};
+
+// Solo se usa GitHub CLI si los archivos grandes han cambiado desde la última publicación.
+const sinCambiosGrandes =
+  grandes.length === anteriores.length &&
+  grandes.every((f) => anteriores.some((a) => a.asset === nombreAssetDe(f) && a.bytes === f.bytes));
+
+let assets;
+if (sinCambiosGrandes) {
+  assets = anteriores.map((a) => ({ name: a.asset, size: a.bytes }));
+} else {
+  if (!tryRun("gh", ["auth", "status"])) {
+    throw new Error("Hay archivos grandes (más de 49 MB) que subir y GitHub CLI no tiene la sesión iniciada.\n" +
+      "Ejecuta \"Publicar en Violet.bat\" otra vez: te pedirá iniciar sesión en GitHub una sola vez.");
+  }
+  if (!tryRun("gh", ["release", "view", TAG, "-R", repo])) {
+    run("gh", ["release", "create", TAG, "-R", repo, "--title", "Archivos grandes de Violet",
       "--notes", "Archivos de más de 49 MB publicados en Violet. Se gestiona automáticamente con scripts/sincronizar.mjs."]);
   }
+  assets = JSON.parse(run("gh", ["api", `repos/${repo}/releases/tags/${TAG}`, "--jq", "[.assets[] | {name, size}]"]));
 }
-const assets = grandes.length || anteriores.length
-  ? JSON.parse(run("gh", ["api", `repos/${repo}/releases/tags/${TAG}`, "--jq", "[.assets[] | {name, size}]"]))
-  : [];
 
 let tmp = null;
 for (const f of grandes) {
   const [seccion] = f.rel.split("/");
-  const base = limpiar(basename(f.rel)) || "archivo";
-  const nombreAsset = usados.get(base) > 1 ? `${limpiar(seccion)}--${base}` : base;
+  const nombreAsset = nombreAssetDe(f);
   const existe = assets.find((a) => a.name === nombreAsset && a.size === f.bytes);
   if (!existe) {
     tmp ??= mkdtempSync(join(tmpdir(), "violet-"));
     const copia = join(tmp, nombreAsset);
     copyFileSync(f.full, copia);
     console.log(`  ↑ ${f.rel} (${mb(f.bytes)}) -> Releases`);
-    run("gh", ["release", "upload", TAG, copia, "--clobber"], { stdio: ["ignore", "pipe", "inherit"] });
+    run("gh", ["release", "upload", TAG, copia, "--clobber", "-R", repo], { stdio: ["ignore", "pipe", "inherit"] });
     rmSync(copia);
   }
   nuevos.push({
@@ -154,7 +171,7 @@ for (const f of grandes) {
 if (tmp) rmSync(tmp, { recursive: true, force: true });
 for (const a of assets) {
   if (!nuevos.some((n) => n.asset === a.name)) {
-    run("gh", ["release", "delete-asset", TAG, a.name, "--yes"]);
+    run("gh", ["release", "delete-asset", TAG, a.name, "--yes", "-R", repo]);
     console.log(`  - Releases: ${a.name}`);
   }
 }
