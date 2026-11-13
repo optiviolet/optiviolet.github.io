@@ -30,6 +30,20 @@ const run = (cmd, args, opts = {}) =>
 const tryRun = (cmd, args) => { try { return run(cmd, args); } catch { return null; } };
 const mb = (b) => (b / 1048576).toFixed(1) + " MB";
 
+// Si algo falla, explicarlo claramente y guardarlo en E:\violet\publicar-error.txt.
+const errorLog = join(origen, "publicar-error.txt");
+process.on("uncaughtException", (e) => {
+  const detalle = [e.message, e.stderr && String(e.stderr).trim()].filter(Boolean).join("\n");
+  console.error("\n*** ERROR: no se pudo publicar. Nada se ha perdido; vuelve a intentarlo. ***\n\n" + detalle);
+  try { writeFileSync(errorLog, new Date().toLocaleString("es") + "\n\n" + detalle + "\n"); } catch {}
+  process.exit(1);
+});
+if (existsSync(join(root, ".git", "index.lock"))) {
+  console.error("Ya hay otra publicación en marcha. Espera a que termine y vuelve a intentarlo.\n" +
+    "(Si no hay ninguna, borra el archivo " + join(root, ".git", "index.lock") + ")");
+  process.exit(1);
+}
+
 if (!existsSync(origen) || !statSync(origen).isDirectory()) {
   console.error(`No existe la carpeta de origen: ${origen}`);
   process.exit(1);
@@ -157,3 +171,4 @@ if (run("git", ["diff", "--cached", "--name-only"])) {
 } else {
   console.log("\nNo hay cambios que publicar.");
 }
+rmSync(errorLog, { force: true }); // todo fue bien: quitar el aviso de un error anterior
