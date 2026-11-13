@@ -2,8 +2,8 @@
 //   node scripts/sincronizar.mjs "E:\violet"
 //
 // - Cada carpeta de E:\violet es una sección de la web. Los archivos sueltos en la raíz se ignoran.
-// - Archivos de hasta 95 MB  -> se copian a files/<sección>/ del repositorio.
-// - Archivos de más de 95 MB -> se suben a GitHub Releases (máx. 2 GB) y se anotan en releases.json.
+// - Archivos de hasta 49 MB  -> se copian a files/<sección>/ del repositorio.
+// - Archivos de más de 49 MB -> se suben a GitHub Releases (máx. 2 GB) y se anotan en releases.json.
 // - Lo que borres en E:\violet también se borra de la web (espejo).
 // - Al final hace commit y push; GitHub Actions publica la web en 1-2 minutos.
 // Necesita git y GitHub CLI (gh) con sesión iniciada.
@@ -20,13 +20,13 @@ import { tmpdir } from "node:os";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const filesDir = join(root, "files");
 const origen = resolve(process.argv[2] || "E:/violet");
-const LIMITE = 95 * 1024 * 1024;
+const LIMITE = 49 * 1024 * 1024;
 const TAG = "archivos";
 const IGNORAR = new Set(["Thumbs.db", "desktop.ini"]);
 const MANTENER = new Set(["LEEME.md", ".gitkeep"]);
 
 const run = (cmd, args, opts = {}) =>
-  execFileSync(cmd, args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], ...opts }).trim();
+  (execFileSync(cmd, args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], ...opts }) ?? "").trim();
 const tryRun = (cmd, args) => { try { return run(cmd, args); } catch { return null; } };
 const mb = (b) => (b / 1048576).toFixed(1) + " MB";
 
@@ -106,7 +106,7 @@ for (const f of grandes) {
 if (grandes.length || anteriores.length) {
   if (!tryRun("gh", ["release", "view", TAG])) {
     run("gh", ["release", "create", TAG, "--title", "Archivos grandes de Violet",
-      "--notes", "Archivos de más de 95 MB publicados en Violet. Se gestiona automáticamente con scripts/sincronizar.mjs."]);
+      "--notes", "Archivos de más de 49 MB publicados en Violet. Se gestiona automáticamente con scripts/sincronizar.mjs."]);
   }
 }
 const assets = grandes.length || anteriores.length
