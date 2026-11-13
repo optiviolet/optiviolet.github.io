@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
+  <div class="glow" aria-hidden="true"></div>
+
   <header class="top">
     <a class="logo" href="./" aria-label="Violet, inicio">
       <svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true">
@@ -20,16 +22,23 @@
     </a>
   </header>
 
-  <main class="wrap">
-    <section class="intro">
-      <h1>Descargas</h1>
-      <p id="count" class="muted">Cargando archivos…</p>
-    </section>
+  <div class="layout">
+    <nav class="side" aria-label="Secciones">
+      <p class="side-title">Secciones</p>
+      <ul id="sections" class="sections"></ul>
+    </nav>
 
-    <section id="list" class="grid" aria-live="polite"></section>
+    <main class="content">
+      <section class="intro">
+        <h1 id="title">Descargas</h1>
+        <p id="count" class="muted">Cargando archivos…</p>
+      </section>
 
-    <p id="status" class="status" hidden></p>
-  </main>
+      <section id="list" class="grid" aria-live="polite"></section>
+
+      <p id="status" class="status" hidden></p>
+    </main>
+  </div>
 
   <footer class="foot">
     <span>Violet</span> · Descargas directas, sin registro.

@@ -31,7 +31,7 @@ jobs:
         run: |
           mkdir -p _site
           cp -r index.html 404.html assets archivos.json _site/
-          if [ -d files ]; then cp -r files _site/; rm -f _site/files/LEEME.md _site/files/.gitkeep; fi
+          if [ -d files ]; then cp -r files _site/; rm -f _site/files/LEEME.md; find _site/files -name .gitkeep -delete; fi
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

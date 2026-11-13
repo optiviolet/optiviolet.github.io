@@ -1,4 +1,5 @@
-// Genera archivos.json a partir de la carpeta files/ y de catalogo.json.
+// Genera archivos.json a partir de la carpeta files/, releases.json y catalogo.json.
+// Cada subcarpeta de files/ es una sección de la web (apps, juegos, ...).
 // Lo ejecuta GitHub Actions en cada publicación (también puedes ejecutarlo en local):
 //   node scripts/generar-catalogo.mjs
 // Sin dependencias: solo Node.js.
@@ -10,19 +11,24 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const filesDir = join(root, "files");
-const IGNORAR = new Set([".gitkeep", ".DS_Store", "Thumbs.db", "desktop.ini", "LEEME.md"]);
+const IGNORAR = new Set(["LEEME.md", "Thumbs.db", "desktop.ini"]);
+const SIN_SECCION = "otros";
 
-// catalogo.json es opcional: nombres bonitos, descripciones y enlaces externos.
-let catalogo = { archivos: {}, enlaces: [] };
-const catalogoPath = join(root, "catalogo.json");
-if (existsSync(catalogoPath)) {
+function leerJSON(nombre, porDefecto) {
+  const p = join(root, nombre);
+  if (!existsSync(p)) return porDefecto;
   try {
-    catalogo = { ...catalogo, ...JSON.parse(readFileSync(catalogoPath, "utf8")) };
+    return JSON.parse(readFileSync(p, "utf8"));
   } catch (e) {
-    console.error("ERROR: catalogo.json no es un JSON válido:\n  " + e.message);
+    console.error(`ERROR: ${nombre} no es un JSON válido:\n  ${e.message}`);
     process.exit(1);
   }
 }
+
+// catalogo.json (opcional): nombres bonitos, descripciones, orden y enlaces externos.
+const catalogo = { archivos: {}, secciones: {}, enlaces: [], ...leerJSON("catalogo.json", {}) };
+// releases.json: archivos grandes subidos a GitHub Releases por scripts/sincronizar.mjs.
+const releases = leerJSON("releases.json", []);
 
 function walk(dir) {
   if (!existsSync(dir)) return [];
@@ -45,6 +51,14 @@ function fechaDe(full) {
 }
 
 const quitarExtension = (n) => n.replace(/\.[^.]+$/, "");
+const capitalizar = (s) => s.charAt(0).toLocaleUpperCase("es") + s.slice(1);
+
+// Secciones = carpetas de primer nivel dentro de files/ (aunque estén vacías).
+const carpetas = existsSync(filesDir)
+  ? readdirSync(filesDir, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && !d.name.startsWith("."))
+      .map((d) => d.name)
+  : [];
 
 const locales = walk(filesDir).map((full) => {
   const rel = relative(filesDir, full).split(sep).join("/"); // p. ej. "juegos/mi archivo.zip"
@@ -52,6 +66,7 @@ const locales = walk(filesDir).map((full) => {
   return {
     nombre: meta.nombre || quitarExtension(rel.split("/").pop()),
     descripcion: meta.descripcion || "",
+    seccion: rel.includes("/") ? rel.split("/")[0] : SIN_SECCION,
     archivo: rel,
     url: "files/" + rel.split("/").map(encodeURIComponent).join("/"),
     bytes: statSync(full).size,
@@ -61,21 +76,25 @@ const locales = walk(filesDir).map((full) => {
   };
 });
 
-// Enlaces externos (p. ej. archivos grandes subidos a GitHub Releases).
-const externos = (catalogo.enlaces || []).flatMap((e, i) => {
+// Enlaces externos: los de releases.json (automáticos) y los escritos a mano en catalogo.json.
+const externos = [...releases, ...(catalogo.enlaces || [])].flatMap((e, i) => {
   if (!e || !e.url || !/^https:\/\//i.test(e.url)) {
-    console.warn(`AVISO: el enlace #${i + 1} de catalogo.json no tiene una URL https válida; se ignora.`);
+    console.warn(`AVISO: un enlace externo (#${i + 1}) no tiene una URL https válida; se ignora.`);
     return [];
   }
+  const clave = e.seccion && e.archivo ? `${e.seccion}/${e.archivo}` : "";
+  const meta = catalogo.archivos?.[clave] || {};
   return [{
-    nombre: e.nombre || decodeURIComponent(e.url.split("/").pop()),
-    descripcion: e.descripcion || "",
-    archivo: e.url.split("?")[0].split("/").pop(),
+    nombre: meta.nombre || e.nombre || quitarExtension(decodeURIComponent(e.url.split("/").pop())),
+    descripcion: meta.descripcion || e.descripcion || "",
+    seccion: e.seccion || SIN_SECCION,
+    archivo: e.archivo || e.url.split("?")[0].split("/").pop(),
     url: e.url,
+    bytes: e.bytes,
     tamano: e.tamano || "",
     fecha: e.fecha || "",
     local: false,
-    orden: e.orden,
+    orden: meta.orden ?? e.orden,
   }];
 });
 
@@ -86,12 +105,23 @@ const archivos = [...locales, ...externos].sort((a, b) => {
   return String(b.fecha).localeCompare(String(a.fecha));
 }).map(({ orden, ...f }) => f);
 
-// Avisos útiles para el administrador.
-for (const clave of Object.keys(catalogo.archivos || {})) {
-  if (!locales.some((f) => f.archivo === clave)) {
-    console.warn(`AVISO: catalogo.json describe "${clave}", pero no existe en files/.`);
-  }
-}
+const ids = new Set([...carpetas, ...archivos.map((f) => f.seccion)]);
+const secciones = [...ids].map((id) => {
+  const meta = catalogo.secciones?.[id] || {};
+  return {
+    id,
+    nombre: meta.nombre || capitalizar(id),
+    total: archivos.filter((f) => f.seccion === id).length,
+    orden: meta.orden,
+  };
+}).sort((a, b) => {
+  const oa = a.orden ?? Infinity, ob = b.orden ?? Infinity;
+  if (oa !== ob) return oa - ob;
+  if (a.id === SIN_SECCION) return 1;
+  if (b.id === SIN_SECCION) return -1;
+  return a.nombre.localeCompare(b.nombre, "es");
+}).map(({ orden, ...s }) => s);
 
-writeFileSync(join(root, "archivos.json"), JSON.stringify({ generado: new Date().toISOString(), archivos }, null, 2) + "\n");
-console.log(`archivos.json generado: ${locales.length} archivo(s) en files/ y ${externos.length} enlace(s) externo(s).`);
+writeFileSync(join(root, "archivos.json"),
+  JSON.stringify({ generado: new Date().toISOString(), secciones, archivos }, null, 2) + "\n");
+console.log(`archivos.json generado: ${secciones.length} sección(es), ${locales.length} archivo(s) en files/ y ${externos.length} enlace(s) externo(s).`);
