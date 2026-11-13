@@ -41,7 +41,7 @@ archivos. Los visitantes solo pueden ver y descargar. No hay contraseñas ni tok
      git init -b main
      git add .
      git commit -m "Violet"
-     git remote add origin https://github.com/TUUSUARIO/TUUSUARIO.github.io.git
+     git remote add origin https://github.com/optiviolet/optiviolet.github.io.git
      git push -u origin main
      ```
 4. En el repositorio ve a **Settings → Pages** y en **Build and deployment → Source** elige **GitHub Actions**.
@@ -52,9 +52,28 @@ archivos. Los visitantes solo pueden ver y descargar. No hay contraseñas ni tok
 
 ---
 
-## Administrar archivos
+## Secciones
 
-Todo se hace desde la web de GitHub (o con git). Cada cambio se publica solo en 1–2 minutos.
+Cada carpeta dentro de `files/` es una sección de la lista lateral (Apps, Juegos, Navegadores...).
+Los archivos de una carpeta solo aparecen al pulsar su sección (o en **Todo**). El nombre que se ve es el de
+la carpeta con mayúscula inicial; puedes cambiarlo u ordenarlo en `catalogo.json`:
+
+```json
+"secciones": { "sistemas operativos": { "nombre": "Sistemas operativos", "orden": 1 } }
+```
+
+## Publicar desde tu carpeta E:\violet (lo más fácil)
+
+1. Mete tus archivos en las carpetas de `E:\violet` (cada carpeta = una sección; puedes crear carpetas nuevas).
+2. Haz doble clic en **`E:\violet\Publicar en Violet.bat`**.
+3. En 1–2 minutos la web muestra exactamente lo que hay en `E:\violet`. Lo que borres allí también desaparece.
+
+El script (`scripts/sincronizar.mjs`) sube los archivos de hasta 49 MB al repositorio y los más grandes
+(hasta 2 GB) a GitHub Releases automáticamente. Necesita Node.js, git y GitHub CLI con sesión iniciada.
+
+## Administrar archivos desde GitHub
+
+También puedes hacerlo desde la web de GitHub (o con git). Cada cambio se publica solo en 1–2 minutos.
 
 ### Añadir un archivo
 Repositorio → carpeta **files** → **Add file → Upload files** → arrastra el archivo → **Commit changes**.
@@ -91,14 +110,14 @@ Para archivos grandes (hasta 2 GB cada uno) usa *Releases*, también gratis:
 1. Repositorio → **Releases → Create a new release** → pon una etiqueta (p. ej. `v1`) → arrastra el archivo
    en *Attach binaries* → **Publish release**.
 2. Copia el enlace del archivo (clic derecho → copiar enlace). Será así:
-   `https://github.com/TUUSUARIO/TUUSUARIO.github.io/releases/download/v1/archivo.zip`
+   `https://github.com/optiviolet/optiviolet.github.io/releases/download/v1/archivo.zip`
 3. Añádelo a `enlaces` en `catalogo.json`:
    ```json
    "enlaces": [
      {
        "nombre": "Mi juego completo",
        "descripcion": "Versión 1.0",
-       "url": "https://github.com/TUUSUARIO/TUUSUARIO.github.io/releases/download/v1/juego.zip",
+       "url": "https://github.com/optiviolet/optiviolet.github.io/releases/download/v1/juego.zip",
        "tamano": "850 MB"
      }
    ]
